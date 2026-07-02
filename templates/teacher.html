@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>EvalIQ — Teacher Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,600;12..96,800&family=Fira+Code:wght@300;400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f1a;--surface:#111827;--card:#141d2e;
+  --border:#1e2d45;--text:#e8edf5;--muted:#5a7090;
+  --accent:#3b82f6;--accent-dim:#1d3a6e;
+  --green:#10b981;--yellow:#f59e0b;--red:#ef4444;
+  --mono:'Fira Code',monospace;--display:'Bricolage Grotesque',sans-serif;
+}
+body{font-family:var(--display);background:var(--bg);color:var(--text);min-height:100vh;}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(59,130,246,.02) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(59,130,246,.02) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;z-index:0;
+}
+
+/* ── NAV ── */
+nav{
+  position:sticky;top:0;z-index:50;
+  background:rgba(11,15,26,.9);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.9rem 2rem;
+}
+.nav-brand{font-size:1.3rem;font-weight:800;color:var(--accent);}
+.nav-role{
+  font-family:var(--mono);font-size:.65rem;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--muted);margin-left:.75rem;
+}
+.nav-right{display:flex;align-items:center;gap:1rem;}
+.nav-btn{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;
+  padding:.45rem 1rem;border:1px solid var(--border);
+  background:none;color:var(--muted);cursor:pointer;transition:all .2s;
+}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.primary{background:var(--accent);border-color:var(--accent);color:white;}
+.nav-btn.primary:hover{opacity:.9;}
+
+/* ── LAYOUT ── */
+.layout{display:flex;min-height:calc(100vh - 57px);position:relative;z-index:1;}
+.sidebar{
+  width:240px;min-width:240px;border-right:1px solid var(--border);
+  padding:1.5rem 0;position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;
+}
+.sidebar-section{padding:0 1rem 1rem;margin-bottom:.5rem;}
+.sidebar-label{
+  font-family:var(--mono);font-size:.6rem;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--muted);padding:0 .75rem;margin-bottom:.5rem;display:block;
+}
+.sidebar-item{
+  display:flex;align-items:center;gap:.75rem;
+  padding:.7rem .75rem;cursor:pointer;
+  border-radius:6px;margin-bottom:2px;
+  font-size:.9rem;font-weight:500;color:var(--muted);
+  transition:all .2s;border:1px solid transparent;
+}
+.sidebar-item:hover,.sidebar-item.active{
+  background:var(--accent-dim);color:var(--accent);border-color:var(--accent-dim);
+}
+.sidebar-item .icon{font-size:1rem;}
+
+/* ── MAIN ── */
+.main{flex:1;padding:2rem;overflow-y:auto;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* ── STATS ROW ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);
+  padding:1.25rem 1.5rem;
+}
+.stat-label{font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;}
+.stat-val{font-size:2rem;font-weight:800;}
+.stat-sub{font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-top:.25rem;}
+
+/* ── PAGE HEADER ── */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;}
+.page-title{font-size:1.5rem;font-weight:700;}
+.page-sub{font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-top:.2rem;}
+
+/* ── ASSIGNMENT CARDS ── */
+.assignment-grid{display:grid;gap:1rem;}
+.a-card{
+  background:var(--surface);border:1px solid var(--border);
+  padding:1.5rem;cursor:pointer;transition:all .2s;
+}
+.a-card:hover{border-color:var(--accent);}
+.a-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;}
+.a-title{font-size:1.05rem;font-weight:700;}
+.a-subject{
+  font-family:var(--mono);font-size:.65rem;letter-spacing:.1em;
+  padding:.25rem .6rem;background:var(--accent-dim);color:var(--accent);
+  margin-top:.3rem;display:inline-block;
+}
+.a-date{font-family:var(--mono);font-size:.65rem;color:var(--muted);}
+
+.a-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1rem;}
+.a-stat{
+  background:var(--card);padding:.75rem;text-align:center;
+  border:1px solid var(--border);
+}
+.a-stat-num{font-size:1.4rem;font-weight:700;}
+.a-stat-num.green{color:var(--green);}
+.a-stat-num.yellow{color:var(--yellow);}
+.a-stat-num.blue{color:var(--accent);}
+.a-stat-lbl{font-family:var(--mono);font-size:.6rem;color:var(--muted);margin-top:.2rem;}
+
+.a-footer{display:flex;gap:.75rem;}
+.a-btn{
+  font-family:var(--mono);font-size:.65rem;letter-spacing:.1em;
+  padding:.4rem .85rem;border:1px solid var(--border);
+  background:none;color:var(--muted);cursor:pointer;transition:all .2s;
+}
+.a-btn:hover{border-color:var(--accent);color:var(--accent);}
+.a-btn.primary{background:var(--accent);border-color:var(--accent);color:white;}
+
+/* ── CREATE FORM ── */
+.form-card{background:var(--surface);border:1px solid var(--border);padding:2rem;max-width:640px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;}
+.form-group{margin-bottom:1.25rem;}
+.form-group label,.form-row .form-group label{
+  display:block;font-family:var(--mono);font-size:.65rem;
+  letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;
+}
+.form-group input,.form-group select{
+  width:100%;padding:.8rem 1rem;
+  background:var(--bg);border:1.5px solid var(--border);
+  font-family:var(--mono);font-size:.85rem;color:var(--text);
+  outline:none;transition:border-color .2s;
+}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent);}
+
+.upload-zone{
+  border:1.5px dashed var(--border);background:var(--bg);
+  padding:2rem;text-align:center;cursor:pointer;transition:all .2s;
+}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(59,130,246,.04);}
+.upload-zone input{display:none;}
+.upload-icon{font-size:2rem;margin-bottom:.5rem;}
+.upload-txt{font-family:var(--mono);font-size:.75rem;color:var(--muted);line-height:1.7;}
+.upload-txt strong{color:var(--text);text-decoration:underline;text-underline-offset:3px;}
+.file-picked{
+  display:none;margin-top:.75rem;font-family:var(--mono);
+  font-size:.7rem;color:var(--green);align-items:center;gap:.5rem;
+}
+.file-picked.show{display:flex;}
+
+.submit-btn{
+  padding:.95rem 2rem;background:var(--accent);border:none;
+  font-family:var(--display);font-size:.95rem;font-weight:700;
+  color:white;cursor:pointer;transition:opacity .2s;
+}
+.submit-btn:hover{opacity:.9;}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* ── SUBMISSIONS TABLE ── */
+.submissions-table{width:100%;border-collapse:collapse;}
+.submissions-table th{
+  text-align:left;font-family:var(--mono);font-size:.62rem;
+  letter-spacing:.15em;text-transform:uppercase;color:var(--muted);
+  padding:.75rem 1rem;border-bottom:1px solid var(--border);background:var(--surface);
+}
+.submissions-table td{
+  padding:.85rem 1rem;border-bottom:1px solid rgba(30,45,69,.5);
+  font-size:.88rem;
+}
+.submissions-table tr:hover td{background:rgba(59,130,246,.04);}
+
+.badge{
+  font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;
+  padding:.25rem .6rem;display:inline-block;
+}
+.badge.evaluated{background:rgba(16,185,129,.15);color:var(--green);}
+.badge.pending{background:rgba(245,158,11,.15);color:var(--yellow);}
+.badge.evaluating{background:rgba(59,130,246,.15);color:var(--accent);}
+.badge.error{background:rgba(239,68,68,.15);color:var(--red);}
+
+.grade-pill{
+  font-family:var(--mono);font-size:.75rem;font-weight:700;
+  width:32px;height:32px;border-radius:50%;display:inline-flex;
+  align-items:center;justify-content:center;
+}
+.grade-A\+,.grade-A{background:rgba(16,185,129,.2);color:var(--green);}
+.grade-B{background:rgba(59,130,246,.2);color:var(--accent);}
+.grade-C{background:rgba(245,158,11,.2);color:var(--yellow);}
+.grade-D,.grade-F{background:rgba(239,68,68,.2);color:var(--red);}
+
+/* ── DETAILS PANEL (Slide-over) ── */
+.panel-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);
+  backdrop-filter:blur(2px);z-index:200;
+}
+.panel-overlay.open{display:block;}
+.panel-drawer{
+  position:fixed;right:0;top:0;bottom:0;width:520px;
+  background:var(--surface);border-left:1px solid var(--border);
+  overflow-y:auto;z-index:201;padding:2rem;
+  animation:slideIn .25s ease;
+}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.drawer-close{
+  position:absolute;top:1.25rem;right:1.25rem;
+  background:none;border:1px solid var(--border);
+  color:var(--muted);padding:.4rem .75rem;cursor:pointer;
+  font-family:var(--mono);font-size:.7rem;
+}
+.drawer-close:hover{border-color:var(--red);color:var(--red);}
+
+.drawer-roll{font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-bottom:.25rem;}
+.drawer-name{font-size:1.5rem;font-weight:700;margin-bottom:.25rem;}
+.drawer-meta{font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-bottom:1.5rem;}
+
+.score-display{
+  background:var(--card);border:1px solid var(--border);
+  padding:1.5rem;margin-bottom:1.5rem;
+  display:flex;align-items:center;gap:1.5rem;
+}
+.score-big{font-size:3.5rem;font-weight:800;line-height:1;color:var(--accent);}
+.score-details{}
+.score-pct{font-family:var(--mono);font-size:.8rem;color:var(--muted);}
+.progress-bar{
+  height:4px;background:var(--border);margin:1rem 0 0;overflow:hidden;
+}
+.progress-fill{height:100%;background:var(--accent);transition:width 1s ease;}
+
+.drawer-section{margin-bottom:1.5rem;}
+.drawer-section-title{
+  font-family:var(--mono);font-size:.62rem;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--muted);
+  padding-bottom:.5rem;border-bottom:1px solid var(--border);margin-bottom:1rem;
+}
+.q-item{
+  padding:.75rem 0;border-bottom:1px solid rgba(30,45,69,.5);
+  display:grid;grid-template-columns:auto 1fr auto;gap:.75rem;align-items:start;
+}
+.q-item:last-child{border-bottom:none;}
+.q-no{font-family:var(--mono);font-size:.7rem;color:var(--muted);padding-top:.1rem;min-width:2rem;}
+.q-info{}
+.q-status-chip{
+  font-family:var(--mono);font-size:.58rem;letter-spacing:.08em;
+  padding:.15rem .45rem;margin-bottom:.3rem;display:inline-block;
+}
+.q-status-chip.correct{background:rgba(16,185,129,.15);color:var(--green);}
+.q-status-chip.partial{background:rgba(245,158,11,.15);color:var(--yellow);}
+.q-status-chip.incorrect{background:rgba(239,68,68,.15);color:var(--red);}
+.q-feedback-txt{font-size:.8rem;color:#8facc8;line-height:1.6;}
+.q-mark{font-size:1rem;font-weight:700;white-space:nowrap;text-align:right;}
+.q-mark small{font-family:var(--mono);font-size:.6rem;color:var(--muted);display:block;}
+
+.fb-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.fb-col-label{font-family:var(--mono);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;}
+.fb-list{list-style:none;}
+.fb-list li{font-size:.8rem;line-height:1.6;padding:.4rem 0 .4rem 1rem;border-bottom:1px solid rgba(30,45,69,.4);position:relative;color:#8facc8;}
+.fb-list li:last-child{border-bottom:none;}
+.fb-list.str li::before{content:'+';position:absolute;left:0;color:var(--green);}
+.fb-list.imp li::before{content:'→';position:absolute;left:0;color:var(--accent);}
+
+/* ── MISC ── */
+.empty{
+  text-align:center;padding:4rem 2rem;
+  font-family:var(--mono);font-size:.8rem;color:var(--muted);
+}
+.empty .empty-icon{font-size:2.5rem;margin-bottom:1rem;}
+
+.error-msg{
+  display:none;background:#1a0f0f;border:1px solid var(--red);
+  padding:.6rem .85rem;font-family:var(--mono);font-size:.72rem;color:#fc8181;
+  margin-bottom:1rem;
+}
+.error-msg.show{display:block;}
+.success-msg{
+  display:none;background:#0f1a15;border:1px solid var(--green);
+  padding:.6rem .85rem;font-family:var(--mono);font-size:.72rem;color:#6ee7b7;
+  margin-bottom:1rem;
+}
+.success-msg.show{display:block;}
+
+.back-btn{
+  display:inline-flex;align-items:center;gap:.5rem;
+  font-family:var(--mono);font-size:.7rem;color:var(--muted);
+  cursor:pointer;margin-bottom:1.5rem;background:none;border:none;
+  padding:0;transition:color .2s;
+}
+.back-btn:hover{color:var(--accent);}
+
+.loading-row{
+  text-align:center;padding:3rem;
+  font-family:var(--mono);font-size:.75rem;color:var(--muted);
+}
+.spinner{
+  width:1.5rem;height:1.5rem;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .7s linear infinite;margin:0 auto .75rem;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .panel-drawer{width:100%;}
+}
+</style>
+</head>
+<body>
+<nav>
+  <div style="display:flex;align-items:baseline;gap:.5rem">
+    <span class="nav-brand">EvalIQ</span>
+    <span class="nav-role">/ Teacher</span>
+  </div>
+  <div class="nav-right">
+    <button class="nav-btn primary" onclick="showPage('create')">+ New Assignment</button>
+    <button class="nav-btn" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <span class="sidebar-label">Menu</span>
+    <div class="sidebar-item active" id="nav-overview" onclick="showPage('overview')">
+      <span class="icon">📊</span> Overview
+    </div>
+    <div class="sidebar-item" id="nav-assignments" onclick="showPage('assignments')">
+      <span class="icon">📋</span> Assignments
+    </div>
+    <div class="sidebar-item" id="nav-create" onclick="showPage('create')">
+      <span class="icon">➕</span> Create Assignment
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Overview Page -->
+    <div class="page active" id="page-overview">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Overview</div>
+          <div class="page-sub">All assignments and activity at a glance</div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Total Assignments</div>
+          <div class="stat-val" id="stat-total" style="color:var(--accent)">—</div>
+          <div class="stat-sub">created</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Submissions</div>
+          <div class="stat-val" id="stat-subs" style="color:var(--green)">—</div>
+          <div class="stat-sub">received</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Evaluated</div>
+          <div class="stat-val" id="stat-eval" style="color:var(--yellow)">—</div>
+          <div class="stat-sub">graded by AI</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pending</div>
+          <div class="stat-val" id="stat-pend" style="color:var(--red)">—</div>
+          <div class="stat-sub">not yet submitted</div>
+        </div>
+      </div>
+
+      <div class="page-header" style="margin-top:1.5rem">
+        <div class="page-title" style="font-size:1.1rem">Recent Assignments</div>
+      </div>
+      <div id="overview-list" class="assignment-grid"></div>
+    </div>
+
+    <!-- Assignments Page -->
+    <div class="page" id="page-assignments">
+      <div id="assignments-list-view">
+        <div class="page-header">
+          <div>
+            <div class="page-title">All Assignments</div>
+            <div class="page-sub">Click an assignment to see student submissions</div>
+          </div>
+          <button class="submit-btn" onclick="showPage('create')" style="font-size:.8rem;padding:.6rem 1.25rem">+ New</button>
+        </div>
+        <div id="all-assignments-list" class="assignment-grid"></div>
+      </div>
+
+      <div id="submissions-view" style="display:none">
+        <button class="back-btn" onclick="showAssignmentList()">← Back to Assignments</button>
+        <div class="page-header">
+          <div>
+            <div class="page-title" id="sub-view-title">Submissions</div>
+            <div class="page-sub" id="sub-view-meta"></div>
+          </div>
+        </div>
+        <div id="submissions-container"></div>
+      </div>
+    </div>
+
+    <!-- Create Page -->
+    <div class="page" id="page-create">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Create Assignment</div>
+          <div class="page-sub">Upload answer key and configure assignment details</div>
+        </div>
+      </div>
+      <div class="form-card">
+        <div class="error-msg" id="create-err"></div>
+        <div class="success-msg" id="create-ok"></div>
+
+        <div class="form-group">
+          <label>Assignment Title</label>
+          <input type="text" id="c-title" placeholder="e.g. Unit 3 — Thermodynamics"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Subject</label>
+            <input type="text" id="c-subject" placeholder="e.g. Physics"/>
+          </div>
+          <div class="form-group">
+            <label>Maximum Marks</label>
+            <input type="number" id="c-marks" value="100" min="1" max="500"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Deadline (optional)</label>
+          <input type="datetime-local" id="c-deadline"/>
+        </div>
+        <div class="form-group">
+          <label>Answer Key (PDF or Image)</label>
+          <div class="upload-zone" id="key-zone" onclick="document.getElementById('key-inp').click()">
+            <input type="file" id="key-inp" accept=".pdf,.png,.jpg,.jpeg" onchange="pickFile(this,'key')">
+            <div class="upload-icon">📋</div>
+            <div class="upload-txt"><strong>Click to upload</strong> answer key<br>PDF · PNG · JPG</div>
+          </div>
+          <div class="file-picked" id="key-picked"></div>
+        </div>
+        <button class="submit-btn" id="create-btn" onclick="createAssignment()">Create Assignment</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Submission Detail Drawer -->
+<div class="panel-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="panel-drawer" id="detail-drawer" style="display:none">
+  <button class="drawer-close" onclick="closeDrawer()">✕ Close</button>
+  <div id="drawer-content"></div>
+</div>
+
+<script>
+// Guard
+if (!localStorage.getItem('evaliq_role') || localStorage.getItem('evaliq_role') !== 'teacher') {
+  window.location.href = '/';
+}
+
+let allAssignments = [];
+
+// ── NAV ──
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const navEl = document.getElementById('nav-'+id);
+  if (navEl) navEl.classList.add('active');
+  if (id==='overview'||id==='assignments') loadAssignments();
+}
+
+// ── LOAD ASSIGNMENTS ──
+async function loadAssignments() {
+  const resp = await fetch('/api/teacher/assignments');
+  allAssignments = await resp.json();
+  renderOverview();
+  renderAssignmentsList();
+}
+
+function renderOverview() {
+  const total = allAssignments.length;
+  const subs  = allAssignments.reduce((a,x)=>a+x.total_submissions,0);
+  const eval_ = allAssignments.reduce((a,x)=>a+x.evaluated,0);
+  const pend  = allAssignments.reduce((a,x)=>a+x.pending,0);
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-subs').textContent  = subs;
+  document.getElementById('stat-eval').textContent  = eval_;
+  document.getElementById('stat-pend').textContent  = pend;
+
+  const el = document.getElementById('overview-list');
+  if (!allAssignments.length) {
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div>No assignments yet. Create your first one!</div>`;
+    return;
+  }
+  el.innerHTML = allAssignments.slice(0,4).map(renderAssignmentCard).join('');
+}
+
+function renderAssignmentsList() {
+  const el = document.getElementById('all-assignments-list');
+  if (!allAssignments.length) {
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div>No assignments yet.</div>`;
+    return;
+  }
+  el.innerHTML = allAssignments.map(renderAssignmentCard).join('');
+}
+
+function renderAssignmentCard(a) {
+  return `<div class="a-card">
+    <div class="a-card-header">
+      <div>
+        <div class="a-title">${a.title}</div>
+        <span class="a-subject">${a.subject}</span>
+      </div>
+      <div class="a-date">${a.created_at}</div>
+    </div>
+    <div class="a-stats">
+      <div class="a-stat">
+        <div class="a-stat-num blue">${a.total_submissions}</div>
+        <div class="a-stat-lbl">Submitted</div>
+      </div>
+      <div class="a-stat">
+        <div class="a-stat-num green">${a.evaluated}</div>
+        <div class="a-stat-lbl">Evaluated</div>
+      </div>
+      <div class="a-stat">
+        <div class="a-stat-num yellow">${a.pending}</div>
+        <div class="a-stat-lbl">Pending</div>
+      </div>
+    </div>
+    <div class="a-footer">
+      <button class="a-btn primary" onclick="viewSubmissions('${a.id}','${a.title}','${a.subject}',${a.max_marks})">View Submissions</button>
+      <span style="font-family:var(--mono);font-size:.65rem;color:var(--muted);align-self:center">Max: ${a.max_marks} marks</span>
+    </div>
+  </div>`;
+}
+
+// ── SUBMISSIONS ──
+async function viewSubmissions(aid, title, subject, maxMarks) {
+  showPage('assignments');
+  document.getElementById('assignments-list-view').style.display='none';
+  document.getElementById('submissions-view').style.display='block';
+  document.getElementById('sub-view-title').textContent = title;
+  document.getElementById('sub-view-meta').textContent = `${subject} · Max ${maxMarks} marks`;
+
+  const el = document.getElementById('submissions-container');
+  el.innerHTML=`<div class="loading-row"><div class="spinner"></div>Loading submissions...</div>`;
+
+  const resp = await fetch(`/api/teacher/submissions/${aid}`);
+  const subs = await resp.json();
+
+  if (!subs.length) {
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div>No submissions yet for this assignment.</div>`;
+    return;
+  }
+
+  el.innerHTML=`<table class="submissions-table">
+    <thead>
+      <tr>
+        <th>Roll No</th><th>Student Name</th><th>Submitted</th>
+        <th>Status</th><th>Score</th><th>Grade</th><th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${subs.map(s=>`
+        <tr>
+          <td><span style="font-family:var(--mono);font-size:.8rem">${s.student_roll}</span></td>
+          <td>${s.student_name}</td>
+          <td><span style="font-family:var(--mono);font-size:.75rem;color:var(--muted)">${s.submitted_at}</span></td>
+          <td><span class="badge ${s.status}">${s.status}</span></td>
+          <td>${s.total_score!=null?`<strong>${s.total_score}/${maxMarks}</strong>`:'—'}</td>
+          <td>${s.grade?`<span class="grade-pill grade-${s.grade}">${s.grade}</span>`:'—'}</td>
+          <td>${s.status==='evaluated'?`<button class="a-btn" onclick='openDrawer(${JSON.stringify(s)},${maxMarks})'>Details</button>`:'—'}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function showAssignmentList() {
+  document.getElementById('assignments-list-view').style.display='block';
+  document.getElementById('submissions-view').style.display='none';
+}
+
+// ── DRAWER ──
+function openDrawer(s, maxMarks) {
+  const fb = s.feedback||{};
+  const qs = (fb.questions||[]).map(q=>`
+    <div class="q-item">
+      <div class="q-no">${q.question_no}</div>
+      <div class="q-info">
+        <span class="q-status-chip ${q.status}">${q.status}</span>
+        <div class="q-feedback-txt">${q.feedback}</div>
+      </div>
+      <div class="q-mark">${q.marks_awarded}<small>/ ${q.marks_possible}</small></div>
+    </div>`).join('');
+
+  document.getElementById('drawer-content').innerHTML=`
+    <div class="drawer-roll">${s.student_roll}</div>
+    <div class="drawer-name">${s.student_name}</div>
+    <div class="drawer-meta">Submitted ${s.submitted_at}</div>
+
+    <div class="score-display">
+      <div class="score-big">${s.total_score}</div>
+      <div class="score-details">
+        <span class="grade-pill grade-${s.grade}" style="width:auto;border-radius:4px;padding:.3rem .75rem;font-size:.85rem">Grade ${s.grade}</span>
+        <div class="score-pct" style="margin-top:.5rem">${s.percentage}% · out of ${maxMarks} marks</div>
+        <div class="progress-bar" style="width:200px"><div class="progress-fill" style="width:${s.percentage}%"></div></div>
+      </div>
+    </div>
+
+    ${s.summary?`<div class="drawer-section">
+      <div class="drawer-section-title">Summary</div>
+      <p style="font-size:.82rem;color:#8facc8;line-height:1.7">${s.summary}</p>
+    </div>`:''}
+
+    ${qs?`<div class="drawer-section">
+      <div class="drawer-section-title">Question Breakdown</div>
+      ${qs}
+    </div>`:''}
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Feedback</div>
+      <div class="fb-grid">
+        <div>
+          <div class="fb-col-label">Strengths</div>
+          <ul class="fb-list str">${(fb.strengths||[]).map(x=>`<li>${x}</li>`).join('')}</ul>
+        </div>
+        <div>
+          <div class="fb-col-label">Improvements</div>
+          <ul class="fb-list imp">${(fb.improvements||[]).map(x=>`<li>${x}</li>`).join('')}</ul>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('detail-drawer').style.display='block';
+  document.getElementById('drawer-overlay').classList.add('open');
+  setTimeout(()=>document.querySelector('.progress-fill')?.style.setProperty('width',s.percentage+'%'),100);
+}
+function closeDrawer() {
+  document.getElementById('detail-drawer').style.display='none';
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// ── CREATE ──
+function pickFile(inp, type) {
+  const file = inp.files[0];
+  if (!file) return;
+  const el = document.getElementById(type+'-picked');
+  el.textContent = '✓ ' + file.name;
+  el.classList.add('show');
+}
+
+['key-zone'].forEach(id=>{
+  const z = document.getElementById(id);
+  if (!z) return;
+  z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('dragover')});
+  z.addEventListener('dragleave',()=>z.classList.remove('dragover'));
+  z.addEventListener('drop',e=>{
+    e.preventDefault();z.classList.remove('dragover');
+    const inp = z.querySelector('input');
+    inp.files = e.dataTransfer.files;
+    pickFile(inp,'key');
+  });
+});
+
+async function createAssignment() {
+  const err = document.getElementById('create-err');
+  const ok  = document.getElementById('create-ok');
+  err.classList.remove('show'); ok.classList.remove('show');
+
+  const title   = document.getElementById('c-title').value.trim();
+  const subject = document.getElementById('c-subject').value.trim();
+  const marks   = document.getElementById('c-marks').value;
+  const keyFile = document.getElementById('key-inp').files[0];
+  const deadline= document.getElementById('c-deadline').value;
+
+  if (!title)   { err.textContent='Assignment title is required';err.classList.add('show');return; }
+  if (!subject) { err.textContent='Subject is required';err.classList.add('show');return; }
+  if (!keyFile) { err.textContent='Please upload the answer key';err.classList.add('show');return; }
+
+  const btn = document.getElementById('create-btn');
+  btn.disabled=true; btn.textContent='Creating...';
+
+  const form = new FormData();
+  form.append('title',title);form.append('subject',subject);
+  form.append('max_marks',marks);form.append('deadline',deadline);
+  form.append('key_file',keyFile);
+
+  try {
+    const resp = await fetch('/api/teacher/create-assignment',{method:'POST',body:form});
+    const data = await resp.json();
+    if (data.success) {
+      ok.textContent=`✓ Assignment created! ID: ${data.assignment_id}`;
+      ok.classList.add('show');
+      document.getElementById('c-title').value='';
+      document.getElementById('c-subject').value='';
+      document.getElementById('c-marks').value='100';
+      document.getElementById('c-deadline').value='';
+      document.getElementById('key-inp').value='';
+      document.getElementById('key-picked').classList.remove('show');
+      loadAssignments();
+    } else {
+      err.textContent=data.error;err.classList.add('show');
+    }
+  } catch(e) {
+    err.textContent='Server error: '+e.message;err.classList.add('show');
+  }
+  btn.disabled=false; btn.textContent='Create Assignment';
+}
+
+function logout() {
+  localStorage.removeItem('evaliq_role');
+  window.location.href='/';
+}
+
+// Init
+loadAssignments();
+</script>
+</body>
+</html>
