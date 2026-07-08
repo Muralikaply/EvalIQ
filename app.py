@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify, render_template
 from groq import Groq
 import base64, uuid, json, sqlite3
@@ -5,12 +6,16 @@ from pathlib import Path
 from datetime import datetime
 import fitz  # PyMuPDF
 
+# API key must be set as an environment variable on Render (Dashboard -> Environment)
+# NEVER hardcode API keys in source code.
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise RuntimeError("GROQ_API_KEY environment variable is not set")
 
-
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+groq_client = Groq(api_key=GROQ_API_KEY)
 
 app = Flask(__name__)
-app.secret_key = "evaliq-secret-2024"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "evaliq-secret-2024")
 app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024
 
 UPLOAD = Path("uploads")
@@ -18,13 +23,23 @@ DB     = Path("data/evaliq.db")
 ALLOWED = {'pdf', 'png', 'jpg', 'jpeg'}
 
 
+def ensure_dirs():
+    """Create required directories. Must run at import time (not just
+    under __main__) because gunicorn imports this module without
+    executing the __main__ block."""
+    UPLOAD.mkdir(exist_ok=True)
+    (UPLOAD / "keys").mkdir(exist_ok=True)
+    (UPLOAD / "answers").mkdir(exist_ok=True)
+    DB.parent.mkdir(exist_ok=True)
+
+
 def get_db():
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def init_db():
-    DB.parent.mkdir(exist_ok=True)
     conn = get_db()
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS assignments (
@@ -55,10 +70,16 @@ def init_db():
     conn.commit()
     conn.close()
 
+
+# Run setup at import time so it works both with `python app.py`
+# locally and with `gunicorn app:app` on Render.
+ensure_dirs()
 init_db()
+
 
 def allowed(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED
+
 
 def pdf_to_base64(path):
     """Convert first page of PDF to base64 PNG."""
@@ -67,6 +88,7 @@ def pdf_to_base64(path):
     data = base64.standard_b64encode(pix.tobytes("png")).decode()
     doc.close()
     return data
+
 
 def file_to_base64(path):
     """Convert image or PDF to base64 string."""
@@ -77,6 +99,7 @@ def file_to_base64(path):
         data = f.read()
     mt = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png'}.get(ext.lstrip('.'), 'image/png')
     return base64.standard_b64encode(data).decode(), mt
+
 
 def ai_evaluate(key_path, ans_path, subject, max_marks):
     k_b64, k_mt = file_to_base64(key_path)
@@ -132,6 +155,7 @@ Respond ONLY with valid JSON — no markdown, no extra text:
     raw = response.choices[0].message.content.strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
     return json.loads(raw)
+
 
 def now():
     return datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -313,8 +337,8 @@ def submit_answer():
         db.close()
         return jsonify({"error": str(e)}), 500
 
+
 if __name__ == '__main__':
-    UPLOAD.mkdir(exist_ok=True)
-    (UPLOAD / "keys").mkdir(exist_ok=True)
-    (UPLOAD / "answers").mkdir(exist_ok=True)
-    app.run(debug=True, port=5000)
+    # Local dev only. On Render, gunicorn runs the app instead of this block.
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
